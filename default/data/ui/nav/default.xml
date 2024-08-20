@@ -1,0 +1,6 @@
+<nav search_view="search" color="#F99D1C">
+  <view name="bore_welcome" default='true'/>
+  <view name="bore_play"/>
+  <view name="bore_my_stats"/>
+  <view name="bore_leaders"/>
+</nav>

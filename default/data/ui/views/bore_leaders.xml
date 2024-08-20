@@ -1,0 +1,77 @@
+<form version="1.1" theme="dark">
+  <label>BORE: Leaders</label>
+  <search id="base">
+    <query>index=regex_challenge level!="Practice" user!=admin|dedup _raw|eval validation_consolidated=if(like(validation,"CORRECT%"),"CORRECT","INCORRECT")|eval points=case(event="conf24" AND like(validation,"CORRECT%") AND level="Beginner",50,event="conf24" AND like(validation,"CORRECT%") AND level="Intermediate",100,event="conf24" AND like(validation,"CORRECT%") AND level="Advanced",150,event="conf23" AND like(validation,"CORRECT%") AND level="Beginner",16.7,event="conf23" AND like(validation,"CORRECT%") AND level="Intermediate",33.3,event="conf23" AND like(validation,"CORRECT%") AND level="Advanced",50)|eval bonus_points=if(validation="CORRECT + BONUS 🎉🍻",points*.25,0)|eventstats dc(regex_statement) as submissions max(hint_used) as hint_used by user event level question_number|eval points=if(hint_used=1 AND like(validation,"CORRECT%"),points*.85,points) |eval length=if(validation_consolidated="CORRECT",len(regex_match),null()) |eval duration=_time-q_start 
+|stats max(points) as points max(bonus_points) as bonus_points max(hint_used) as hint_used min(length) as min_corr_len latest(regex_match) as regex_match latest(regex_statement) as regex_statement min(_time) as _time max(submissions) as submissions sum(duration) as duration by validation_consolidated user event level question_number |fillnull duration value=1000000
+|sort 0 level question_number + duration|streamstats count by event level question_number|eval correct_bonus=case(count=1,10,count=2,9,count=3,8,count=4,7,count=5,6,count=6,5,count=7,4,count=8,3,count=9,2,count=10,1,1=1,0)|fillnull points value=0 |lookup regex_games_strings.csv event level question_number OUTPUT regex_answer_len|eval regex_answer_len=mvdedup(regex_answer_len)
+| eval length_bonus=case(min_corr_len=regex_answer_len,0,min_corr_len&lt;(regex_answer_len*.95),5,min_corr_len&lt;(regex_answer_len*.9),7,min_corr_len&lt;(regex_answer_len*.80),15,min_corr_len&lt;(regex_answer_len*.70),20,min_corr_len&lt;(regex_answer_len*.5),30,1=1,0)
+| eval score=if(points=0,0,tonumber(points)+correct_bonus+bonus_points+length_bonus)|stats max(hint_used) as hint_used min(min_corr_len) as min_corr_len max(submissions) as submissions sum(score) as score by user event level question_number</query>
+    <earliest>$field1.earliest$</earliest>
+    <latest>$field1.latest$</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time" token="field1">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row depends="$always_hidden$">
+    <panel>
+      <html>
+        <style>
+          #header div[data-view="views/shared/appbar/Master"] {
+            background: #F99D1C;
+          }
+          [data-view*="views/shared/appbar/Button"] {
+            color: #000000;
+            font-weight: bold;
+          }
+          [data-role*="underline"]{
+            background-color: #FFFFFF;
+          }
+          #trellis div.viz-facet{
+            height: 45% !important;
+          }
+        </style>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Leaders</title>
+      <table>
+        <search base="base">
+          <query>| chart sum(score) as score by user event|addtotals fieldname=total_score|sort 0 - total_score|join user type=left [| rest /services/authentication/users splunk_server=local f=title f=realname| fields title, realname|rename title as user realname as name]|eval name=if(name!="",name,user)|fields name total_score conf*</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">true</option>
+      </table>
+    </panel>
+    <panel>
+      <chart id="trellis">
+        <search base="base">
+          <query>|eval correct_user=if(score=0,null(),user)| chart min(min_corr_len) as min_length sum(submissions) as submissions dc(correct_user) as correct_users by question_number event|fields question_number *conf24 *conf23</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">min_length</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="height">800</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+        <option name="trellis.size">large</option>
+        <option name="trellis.splitBy">event</option>
+        <option name="charting.fieldColors">{correct_users:#662D91,submissions:#C2006B,min_length:#F99D1C}</option>
+        <option name="link.visible">false</option>
+      </chart>
+    </panel>
+  </row>
+</form>

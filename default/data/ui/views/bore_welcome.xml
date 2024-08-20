@@ -1,0 +1,156 @@
+<dashboard version="2" theme="light">
+    <label>BORE: Welcome</label>
+    <description></description>
+    <definition><![CDATA[
+{
+	"visualizations": {
+		"viz_02v0iqos": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "### Welcome!\nAre you a BORE?\n\nAre you ready for rege-X Games?\n\nThe game for X-treme regular expressions!\n\nFun Fact: BORE stands for **Boss of Regular Expressions**"
+			}
+		},
+		"viz_S7dNIJ8Z": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "### Setup",
+				"fontColor": "#dc4e41"
+			}
+		},
+		"viz_cjccUt9S": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "**Helpful Information**: [https://splk.it/BORE_instructions](https://splk.it/BORE_instructions)\n\n**Once logged in**, update name\n\n `<username> > Account Settings > Full Name`"
+			}
+		},
+		"viz_nh3wcyQE": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "1. Check out the dashboard with available questions\n2. Answer questions in any order you want\n3. Scoring will be based on speed, number of questions answered correctly, efficiency and length of regular expression, and a few fun bonus items.\n"
+			}
+		},
+		"viz_1frCL72J": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "### Rules",
+				"fontColor": "#dc4e41"
+			}
+		},
+		"viz_5FED1lxY": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "**TIPS**\n- When escaping `\\`, use `\\\\`\n- Use `match` as the capture group name when working on matching and/or replacing questions\n- Use `field1`, `field2`, etc. capture groups when working on extraction questions\n\n\n"
+			}
+		},
+		"viz_pLtjVYAW": {
+			"type": "splunk.markdown",
+			"options": {
+				"markdown": "Sponsored by **Splunk Community Team**\n\nJoin the incredible user group and chat all things Splunk!\n\n- [Splunk Docs: About Splunk Community](https://docs.splunk.com/Documentation/Community/current/community/AboutCommunity)\n- [Splunk Community Website](https://community.splunk.com/)"
+			}
+		}
+	},
+	"dataSources": {},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"latest": "$global_time.latest$",
+						"earliest": "$global_time.earliest$"
+					}
+				}
+			}
+		}
+	},
+	"inputs": {},
+	"layout": {
+		"type": "absolute",
+		"options": {
+			"display": "auto-scale"
+		},
+		"structure": [
+			{
+				"item": "viz_02v0iqos",
+				"type": "block",
+				"position": {
+					"x": 0,
+					"y": 40,
+					"w": 380,
+					"h": 150
+				}
+			},
+			{
+				"item": "viz_S7dNIJ8Z",
+				"type": "block",
+				"position": {
+					"x": 0,
+					"y": 210,
+					"w": 70,
+					"h": 40
+				}
+			},
+			{
+				"item": "viz_cjccUt9S",
+				"type": "block",
+				"position": {
+					"x": 0,
+					"y": 240,
+					"w": 360,
+					"h": 210
+				}
+			},
+			{
+				"item": "viz_nh3wcyQE",
+				"type": "block",
+				"position": {
+					"x": 360,
+					"y": 70,
+					"w": 420,
+					"h": 180
+				}
+			},
+			{
+				"item": "viz_1frCL72J",
+				"type": "block",
+				"position": {
+					"x": 390,
+					"y": 50,
+					"w": 70,
+					"h": 40
+				}
+			},
+			{
+				"item": "viz_5FED1lxY",
+				"type": "block",
+				"position": {
+					"x": 400,
+					"y": 210,
+					"w": 300,
+					"h": 200
+				}
+			},
+			{
+				"item": "viz_pLtjVYAW",
+				"type": "block",
+				"position": {
+					"x": 140,
+					"y": 390,
+					"w": 400,
+					"h": 110
+				}
+			}
+		],
+		"globalInputs": []
+	},
+	"description": "",
+	"title": "BORE: Welcome"
+}
+    ]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

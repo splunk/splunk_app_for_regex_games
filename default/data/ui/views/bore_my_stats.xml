@@ -1,0 +1,52 @@
+<form version="1.1">
+  <label>BORE: My Stats</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="event">
+      <label>Event</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>event</fieldForLabel>
+      <fieldForValue>event</fieldForValue>
+      <search>
+        <query>|inputlookup user_submissions.csv|stats count as _count by event</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="level">
+      <label>Level</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <fieldForLabel>level</fieldForLabel>
+      <fieldForValue>level</fieldForValue>
+      <search>
+        <query>|inputlookup user_submissions.csv|stats count as _count by level</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Submissions</title>
+      <table>
+        <search>
+          <query>| inputlookup user_submissions.csv where event=$event|s$ AND level=$level|s$|eval submissions=regex_statement." [".validation."]"|stats min(steps) as min_steps latest(validation) as validation values(submissions) as submissions by event level question_number
+|sort + question_number</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <option name="link.visible">false</option>
+      </table>
+    </panel>
+  </row>
+</form>

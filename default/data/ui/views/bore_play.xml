@@ -1,0 +1,281 @@
+<form version="1.1">
+  <init>
+    <set token="form.regex">(?&lt;match&gt;)</set>
+    <set token="form.regex_statement">| rex field=temp_string $form.regex|s$</set>
+    <set token="regex">(?&lt;match&gt;)</set>
+    <set token="regex_statement">| rex field=temp_string $form.regex|s$</set>
+    <set token="form.filter">rex</set>
+    <set token="form.sub_match"></set>
+    <set token="form.sub_sub"></set>
+    <unset token="hint_yes"></unset>
+    <set token="sed_filter"></set>
+    <set token="validation"></set>
+    <set token="new_submissions"></set>
+  </init>
+  <label>BORE: Play</label>
+  <search id="inputlookup">
+    <query>| inputlookup regex_games_strings.csv where question_number=$question_number$ AND level=$level$ AND event=$event|s$|eval q_start=now()</query>
+  </search>
+  <search base="inputlookup">
+    <query>|fillnull hint value="Hint not yet created."|stats count as _count by type question hint|eval sed_filter=if(type="sed",1,null())|eval type=if(type="extraction","rex",type)
+    </query>
+    <done>
+      <set token="filter">$result.type$</set>
+      <eval token="sed_filter">$result.sed_filter$</eval>
+      <set token="question">$result.question$</set>
+      <set token="provide_hint">$result.hint$</set>
+    </done>
+  </search>
+  <search>
+    <query>|inputlookup user_submissions.csv where level=$level|s$ AND question_number=$question_number$ AND event=$event|s$|eval _new_submissions=$new_submissions|s$|table regex_statement validation|eval submissions=regex_statement." --- [".validation."]"|fields submissions|reverse|dedup submissions|stats list(submissions) as previous_submissions|appendpipe [stats count| eval previous_submissions="No answer(s) submitted"  | where count==0 |table previous_submissions]|eval previous_submissions=mvjoin(previous_submissions,"
+")</query>
+    <done>
+      <set token="submissions">$result.previous_submissions$</set>
+      <unset token="new_submissions"></unset>
+    </done>
+  </search>
+  <search>
+    <done>
+      <set token="regex_statement">$result.regex_statement$</set>
+      <set token="statement_complete">true</set>
+    </done>
+    <query>| makeresults 
+    |eval regex=$form.regex|s$
+    |eval regex=replace(regex,"\\\\\\\\","\\\\\\\\\\\\\\\\")
+    |rex mode=sed field=regex "s/\"/\\\"/g"
+    |eval sub=$form.sub|s$
+    |rex mode=sed field=sub "s/\\\\\\\\/\\\\\\\\\\\\\\\\/g"
+    |rex mode=sed field=sub "s/\"/\\\"/g"
+    | eval regex_statement = case("$filter$"="rex","| rex field=temp_string \"".regex."\"" , "$filter$"="sed", "| rex field=temp_string mode=sed \"s/".regex."/".sub."/g\"",1=1,"Not Working")
+    | fields regex_statement regex</query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="event" searchWhenChanged="true">
+      <label>Event</label>
+      <choice value="conf23">conf23</choice>
+      <choice value="conf24">conf24</choice>
+      <default>conf24</default>
+      <initialValue>conf24</initialValue>
+    </input>
+    <input type="dropdown" token="level">
+      <label>Level</label>
+      <choice value="Practice">Practice</choice>
+      <choice value="Beginner">Beginner</choice>
+      <choice value="Intermediate">Intermediate</choice>
+      <choice value="Advanced">Advanced</choice>
+      <default>Practice</default>
+      <change>
+        <condition value="Practice">
+          <set token="form.question_number">0</set>
+        </condition>
+        <condition value="Beginner">
+          <set token="form.question_number">1</set>
+        </condition>
+        <condition value="Intermediate">
+          <set token="form.question_number">6</set>
+        </condition>
+        <condition value="Advanced">
+          <set token="form.question_number">11</set>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="question_number" searchWhenChanged="true">
+      <label>Question</label>
+      <fieldForLabel>question_number</fieldForLabel>
+      <fieldForValue>question_number</fieldForValue>
+      <default>1</default>
+      <search>
+        <query>| inputlookup regex_games_strings.csv where level=$level|s$|eval default=case(level="Beginner",1,level="Intermediate",6,1=1,11)|stats values(default) as default by question_number|sort question_number</query>
+      </search>
+      <change>
+        <set token="form.hint">no</set>
+        <set token="hint_used">0</set>
+        <set token="hint">no</set>
+        <unset token="form.sub"></unset>
+        <unset token="sub"></unset>
+        <set token="regex">(?&lt;match&gt;)</set>
+        <set token="form.regex">$regex$</set>
+        <set token="regex_statement">| rex field=temp_string $form.regex|s$</set>
+        <set token="form.regex_statement">$regex_statement$</set>
+        <set token="validation"></set>
+        <set token="submissions"></set>
+        <set token="new_submissions">true</set>
+        <eval token="starttime">now()</eval>
+      </change>
+    </input>
+    <input type="text" token="regex">
+      <label>Regular Expression</label>
+      <default>(?&lt;match&gt;)</default>
+      <initialValue>(?&lt;match&gt;)</initialValue>
+      <change>
+        <unset token="statement_complete"></unset>
+      </change>
+    </input>
+    <input type="text" token="sub" depends="$sed_filter$">
+      <label>Substitute</label>
+      <default></default>
+      <initialValue>""</initialValue>
+    </input>
+    <input type="radio" token="hint">
+      <label>Hint?</label>
+      <choice value="no">No</choice>
+      <choice value="yes">Yes</choice>
+      <default>no</default>
+      <initialValue>no</initialValue>
+      <change>
+        <condition value="no">
+          <set token="hint_no"></set>
+          <unset token="hint_yes"></unset>
+        </condition>
+        <condition value="yes">
+          <set token="hint_yes"></set>
+          <unset token="hint_no"></unset>
+          <set token="hint_used">1</set>
+        </condition>
+      </change>
+    </input>
+  </fieldset>
+  <row depends="$this_token_is_not_set_at_anytime$">
+    <panel>
+      <html> 
+        <style>
+      .input-dropdown {
+          min-width: 120px !important;
+          width: 120px !important;
+          max-width: 120px !important;
+        }
+        .splunk-dropdown .select2-container {
+          min-width: 120px !important;
+          width: 120px !important;
+          max-width: 120px !important;
+        }
+        div[data-component="splunk-core:/splunkjs/mvc/components/Dropdown"]
+         {
+            width: 100% !important;
+          }
+        .input-radio {
+          min-width: 120px !important;
+          width: 120px !important;
+          max-width: 120px !important;
+        }
+        #submissions{
+          width:35% !important;
+          height: 20px !important;
+        }
+        #question_html{
+          width:65% !important;
+        }
+        #header div[data-view="views/shared/appbar/Master"] {
+          background: #F99D1C;
+        }
+        [data-view*="views/shared/appbar/Button"] {
+          color: #000000;
+          font-weight: bold;
+        }
+        [data-role*="underline"]{
+          background-color: #FFFFFF;
+        }
+      </style>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$this_token_is_not_set_at_anytime$">
+      <table>
+        <search base="inputlookup">
+          <done>
+            <set token="regex_link">$result.regex_link$</set>
+          </done>
+          <query>| stats count as _count by regex_link</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">0</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="question_html">
+      <html>
+        <h1 style="font-size:2em">Question #$question_number$: $question$</h1>
+        <a style="color:#ED0080; font-size:18pt; font-weight: bold" href="$regex_link$" target="_blank">Link to regex101 for Question $question_number$</a>
+        <br/>
+        <body>
+          <span style="color:#F05A22; font-size:18pt; font-weight: bold">Your answer is: </span>
+          <span style="color:$color$; font-size:18pt; font-weight: bold">$validation$</span>
+        </body>
+      </html>
+    </panel>
+    <panel id="submissions">
+      <title>Previous Submissions</title>
+      <html>
+        <body>
+          <pre>$submissions|n$</pre>
+        </body>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$hint_yes$">
+      <html>
+        <p style="color:#662D91; font-size:18pt; font-weight: bold">$provide_hint$</p>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>What your regex matches</title>
+      <table>
+        <title>$regex_statement$</title>
+        <search base="inputlookup">
+          <query>|search advanced_hidden=0|stats values(expected_result) as expected_result by string|replace "/s*" with " *" in string|replace "*/s" with "* " in string|rex field=expected_result mode=sed "s/\| \|/|/g"|eval temp_string=string|eval temp_string=string
+$regex_statement$ max_match=20|foreach field* [eval &lt;&lt;FIELD&gt;&gt;=if('&lt;&lt;FIELD&gt;&gt;'=="",null(),"&lt;&lt;FIELD&gt;&gt;"."=".'&lt;&lt;FIELD&gt;&gt;')] |fillnull field1 field2 field3 field4 field5 field6 value="!!"
+|eval temp_extraction_1=if(field1!="!!",mvjoin(field1,"~"),null())
+|eval temp_extraction_2=if(field2!="!!",if(isnotnull(temp_extraction_1),temp_extraction_1."|".mvjoin(field2,"~"),mvjoin(field2,"~")),temp_extraction_1)
+|eval temp_extraction_3=if(field3!="!!",if(isnotnull(temp_extraction_2),temp_extraction_2."|".mvjoin(field3,"~"),mvjoin(field3,"~")),temp_extraction_2)
+|eval temp_extraction_4=if(field4!="!!",if(isnotnull(temp_extraction_3),temp_extraction_3."|".mvjoin(field4,"~"),mvjoin(field4,"~")),temp_extraction_3)
+|eval temp_extraction_5=if(field5!="!!",if(isnotnull(temp_extraction_4),temp_extraction_4."|".mvjoin(field5,"~"),mvjoin(field5,"~")),temp_extraction_4)
+|eval temp_extraction=if(field6!="!!",if(isnotnull(temp_extraction_5),temp_extraction_5."|".mvjoin(field6,"~"),mvjoin(field6,"~")),temp_extraction_5)|eval match=case("$filter$"="rex" AND isnotnull(match),match,"$filter$"="rex" AND isnull(match),temp_extraction,"$filter$"="sed",temp_string,1=1,string)
+|eval temp_match=mvjoin(match,"|")|eval Correct=if(expected_result=temp_match OR (isnull(expected_result) AND isnull(temp_match)),"✅","❌")
+|makemv expected_result delim="|"|makemv match delim="|"|rename string as "Input", match as "Output"|eval Output=mvfilter(Output!=" ")|eval "Expected Result"=mvfilter(expected_result!=" ")
+|fields - expected_result temp_match|fields Input Output "Expected Result" Correct</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$hidden$">
+    <panel>
+      <title>Scoring</title>
+      <table>
+        <search base="inputlookup">
+          <done>
+            <set token="validation">$result.validation$</set>
+            <set token="color">$result.color$</set>
+            <set token="new_submissions">true</set>
+          </done>
+          <query>|eval _complete=$statement_complete|s$|replace "/s*" with " *" in string|replace "*/s" with "* " in string|rex field=expected_result mode=sed "s/\| \|/|/g"|eval temp_string=string |eval temp_string=string
+$regex_statement$ max_match=20|foreach field* [eval &lt;&lt;FIELD&gt;&gt;=if('&lt;&lt;FIELD&gt;&gt;'=="",null(),"&lt;&lt;FIELD&gt;&gt;"."=".'&lt;&lt;FIELD&gt;&gt;')] |fillnull field1 field2 field3 field4 field5 field6 value="!!"
+|eval temp_extraction_1=if(field1!="!!",mvjoin(field1,"~"),null())
+|eval temp_extraction_2=if(field2!="!!",if(isnotnull(temp_extraction_1),temp_extraction_1."|".mvjoin(field2,"~"),mvjoin(field2,"~")),temp_extraction_1)
+|eval temp_extraction_3=if(field3!="!!",if(isnotnull(temp_extraction_2),temp_extraction_2."|".mvjoin(field3,"~"),mvjoin(field3,"~")),temp_extraction_2)
+|eval temp_extraction_4=if(field4!="!!",if(isnotnull(temp_extraction_3),temp_extraction_3."|".mvjoin(field4,"~"),mvjoin(field4,"~")),temp_extraction_3)
+|eval temp_extraction_5=if(field5!="!!",if(isnotnull(temp_extraction_4),temp_extraction_4."|".mvjoin(field5,"~"),mvjoin(field5,"~")),temp_extraction_4)
+|eval temp_extraction=if(field6!="!!",if(isnotnull(temp_extraction_5),temp_extraction_5."|".mvjoin(field6,"~"),mvjoin(field6,"~")),temp_extraction_5)|eval match=case("$filter$"="rex" AND isnotnull(match),match,"$filter$"="rex" AND isnull(match),temp_extraction,"$filter$"="sed",temp_string,1=1,string)|eval hint_used=if($hint_used|s$="1",1,0)
+| fields match, question_number, level, event, q_start, advanced_hidden, expected_result, hint_used|fillnull match expected_result value="rhymeswithdrunk"|eval match=mvjoin(match,"|") |eval correct_match=if(expected_result=match,1,0)|eval bonus_points=if(advanced_hidden=1 AND correct_match=1,1,0)|eventstats dc(correct_match) as match_yn max(bonus_points) as bonus_points by advanced_hidden|eval validation=case(match_yn=1 AND correct_match=1 AND advanced_hidden=0,"CORRECT",match_yn=1 AND correct_match=1 AND advanced_hidden=1,"CORRECT + BONUS",match_yn=2 OR (match_yn=1 AND correct_match=0),"INCORRECT",1=1,"Not Working")|stats list(match) as results max(hint_used) as hint_used values(advanced_hidden) as bonus min(q_start) as q_start by validation question_number level event
+|nomv bonus
+|eval status_type=validation."+".bonus|eventstats values(status_type) as status_type|eval validation=case(status_type="INCORRECT+0" OR status_type="INCORRECT+0 1","INCORRECT 👎🤦",status_type="CORRECT + BONUS+1" AND status_type="CORRECT+0","CORRECT + BONUS 🎉🍻",status_type="CORRECT+0","CORRECT 🎉🍻",1=1,"Not Working")
+|eval color=if(like(validation,"CORRECT%"),"#980AEC","#C2006B")
+| eval user="$env:user$", _time=time(), regex_match=$form.regex|s$, regex_statement=$regex_statement|s$|where regex_match!="(?&lt;match&gt;)"|outputlookup user_submissions.csv create_context=user append=t override_if_empty=f|collect index=regex_challenge addtime=true |appendpipe [|stats count as _count|where _count=0|eval validation=""|fields - _count]</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
